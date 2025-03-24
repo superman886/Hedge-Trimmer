@@ -42,7 +42,6 @@ extern long rssi;
 extern bool enable_Iot_data_upload;
 
 
-extern TinyGPSPlus gps;// GPS对象
 
 void battery_senor_read();
 void gps_senor_read();
