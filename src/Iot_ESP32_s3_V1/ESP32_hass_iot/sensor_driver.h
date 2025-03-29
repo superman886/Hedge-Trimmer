@@ -3,7 +3,7 @@
 
 #include <Arduino.h> 
 #include <stdint.h>
-
+extern HardwareSerial GpsSerial ; // 使用UART2
 extern const bool DEBUG_MODE;
 //gps结构体类型
 typedef struct {

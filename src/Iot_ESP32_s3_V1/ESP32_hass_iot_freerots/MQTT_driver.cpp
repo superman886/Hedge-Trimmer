@@ -92,7 +92,7 @@ void mqtt_callback(char *topic, byte *payload, unsigned int length) {
             if(DEBUG_MODE)Serial.print((char)payload[i]);
         }*/
     if(DEBUG_MODE)Serial.println("\n[DEBUG]----------------END----------------");
-    enable_Iot_data_upload = true; // 启用数据上传
+    enable_Iot_data_upload = true; // 启用数据上传   
 }
 
 
@@ -122,7 +122,7 @@ void connect_check(){
           hass_debug_log("[SYS]MQTTMQTT订阅列表添加成功！");
         }
       }
-  }
+}
 
 
 /* HASS debug日志传输函数 */

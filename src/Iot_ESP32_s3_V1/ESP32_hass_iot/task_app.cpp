@@ -34,17 +34,18 @@ void Iot_data_upload_app(){
 
     // 假设 gps_accuracy 是一个浮点数或整数变量
     float gps_accuracy = 1.5; // 示例值，根据实际情况替换
-
+    String payload = "home" ;
     // 构建 JSON 字符串
-    String sensor1_gps_string = "{\"latitude\":" + String(Save_Data.latitude) + 
+   String sensor1_gps_string = "{ \"state\":"+ String(payload)  + 
+                                ",\"latitude\":" + String(Save_Data.latitude) + 
                                 ",\"longitude\":" + String(Save_Data.longitude) + 
                                 ",\"gps_accuracy\":" + String(gps_accuracy) + "}";
-    // 调试模式下打印 JSON 字符串
-    if (DEBUG_MODE) {
+        if (DEBUG_MODE) {
       Serial.printf("[DEBUG] MQTT发送: %s\n", sensor1_gps_string.c_str());}
     // 发布 MQTT 消息
     mqttClient.publish("esp32/sensor/gps", sensor1_gps_string.c_str());
-
+    
+    
 }
 
 /* 串口处理程序  单独一个任务*/

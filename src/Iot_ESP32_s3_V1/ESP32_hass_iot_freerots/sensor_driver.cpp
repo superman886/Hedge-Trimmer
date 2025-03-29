@@ -1,4 +1,4 @@
-//感知系统：激光测距*4 GPS*1 霍尔编码器*2 电压测量*1  gps*1 电压测量*1
+//感知系统：激光测距*4 GPS*1 霍尔编码器*2   电压测量*1
 //执行系统：底盘电机*2 LED*1 语音播报*1
 
 #include "sensor_driver.h"
@@ -30,7 +30,6 @@ void battery_senor_read(){
     }
       // 计算平均值
     float avgAdcValue = sum / numSamples;*/
-
     int adcValue = analogRead(adcPin); // 读取 ADC 值
     float voltageAtADC = (adcValue / 4095.0) * 3.3 + 0.16;  //// 计算电压手动加了0.16v
     // 根据分压比例计算实际电压
@@ -44,25 +43,14 @@ void battery_senor_read(){
     // 计算电量百分比
     float percentage = ((actualVoltage - minVoltage) / (maxVoltage - minVoltage)) * 100.0;
     batteryPercentage = percentage;
-    // 输出电压到串口监视器
-    /*Serial.print("ADC Value: ");
-    Serial.println(adcValue);
-    Serial.print("voltageAtADC: ");
-    Serial.println(voltageAtADC);
-    Serial.print("Battery Voltage: ");
-    Serial.print(actualVoltage);
-    Serial.println(" V");
-    Serial.print("batteryPercentage: ");
-    Serial.print(batteryPercentage);
-    Serial.println(" %");*/ 
-    // 等待 1 秒 
-    delay(1000);
+    //delay(1000);
   }
   
 void gps_senor_read(){
+
     // 读取 GPS 数据
-    while (GpsSerial.available()) {
-        gpsRxBuffer[ii++] = GpsSerial.read();
+    while (Serial1.available()) {
+        gpsRxBuffer[ii++] = Serial1.read();
           if (ii == 600) {
             memset(gpsRxBuffer, 0, 600); // 清空缓冲区
             ii = 0;
@@ -74,9 +62,11 @@ void gps_senor_read(){
     char* GPS_BufferTail;    // GPS 数据尾
     if ((GPS_BufferHead = strstr(gpsRxBuffer, "$GPRMC,")) != NULL || (GPS_BufferHead = strstr(gpsRxBuffer, "$GNRMC,")) != NULL) {   // 查找 GPS 数据头
         if (((GPS_BufferTail = strstr(GPS_BufferHead, "\r\n")) != NULL) && (GPS_BufferTail > GPS_BufferHead)) {                     // 查找 GPS 数据尾
+         if (xSemaphoreTake(gpsMutex, portMAX_DELAY) == pdTRUE) {
             memcpy(Save_Data.GPS_Buffer, GPS_BufferHead, GPS_BufferTail - GPS_BufferHead);                                          // 拷贝 GPS 数据到缓冲区
             Save_Data.isGetData = true;                                                                                             // 设置标志位
-
+                        xSemaphoreGive(gpsMutex);  // 解锁
+        }
             // 清空接收缓冲区
             memset(gpsRxBuffer, 0, 600);        
             ii = 0;
@@ -85,6 +75,7 @@ void gps_senor_read(){
 
     // 解析 GPS 数据
     if (Save_Data.isGetData) {               // 判断是否获取到完整的数据
+      if(xSemaphoreTake(gpsMutex, portMAX_DELAY) == pdTRUE){
         Save_Data.isGetData = false;          // 重置标志位
         char *subString;                      // 创建子字符串指针
         char *subStringNext;                   // 创建子字符串指针
@@ -123,7 +114,9 @@ void gps_senor_read(){
                 }
             }
         }
-    }
+      xSemaphoreGive(gpsMutex); //  解锁
+      }
+  }
 
     // 打印解析后的 GPS 数据
     if(DEBUG_MODE){
@@ -147,11 +140,25 @@ void gps_senor_read(){
                 Serial.println("GPS DATA is not useful!");
             }
         }
-    }    
+    } 
+}
+
+// 电机控制函数
+void setMotor(int pwmPin, int in1, int in2, int speed) {
+  speed = constrain(speed, -255, 255);
+  digitalWrite(in1, speed > 0 ? HIGH : LOW);
+  digitalWrite(in2, speed > 0 ? LOW : HIGH);
+  analogWrite(pwmPin, abs(speed));
 }
 
 
+// 编码器中断服务程序
+void IRAM_ATTR leftEncoderISR() {
+  leftEncoderCount += digitalRead(ENCODER_LEFT_B) ? -1 : 1;
+}
 
-
+void IRAM_ATTR rightEncoderISR() {
+  rightEncoderCount += digitalRead(ENCODER_RIGHT_B) ? -1 : 1;
+}
 
 
