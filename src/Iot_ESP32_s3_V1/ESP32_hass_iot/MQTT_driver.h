@@ -6,6 +6,8 @@
 #include <WiFi.h>
 #include <PubSubClient.h>
 
+extern HardwareSerial GpsSerial; // 使用UART2
+
 extern const bool DEBUG_MODE;
 
 /* WiFi相关配置信息 */

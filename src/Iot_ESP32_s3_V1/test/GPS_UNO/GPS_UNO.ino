@@ -1,7 +1,11 @@
 
-#define GpsSerial  Serial
+
 #define DebugSerial Serial
 int L = 13; //LED指示灯引脚
+
+#define RX_PIN 16  // 接收引脚
+#define TX_PIN 17  // 发送引脚
+HardwareSerial GpsSerial(2); // 使用UART2
 
 struct
 {
@@ -23,8 +27,13 @@ unsigned int ii = 0;
 
 void setup()	//初始化内容
 {
-	GpsSerial.begin(9600);			//定义波特率9600
-	DebugSerial.begin(9600);
+
+
+  // 初始化调试串口（USB）
+  DebugSerial.begin(115200);
+  
+  // 初始化与单片机的通信串口
+  GpsSerial.begin(9600, SERIAL_8N1, RX_PIN, TX_PIN);
 
 	Save_Data.isGetData = false;
 	Save_Data.isParseData = false;

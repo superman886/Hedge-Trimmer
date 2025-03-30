@@ -1,4 +1,4 @@
-/*目前完成了  
+/*目前完成了  （多线程版本）停更...........（转战freertos）
 物联网：WiFi连接，MQTT连接，MQTT服务器数据接收到ESP32，ESP32数据发送到Home Assistant
 传感器：电压采集 GPS解析 
 执行器：底盘驱动？ 
@@ -14,7 +14,11 @@
 
 #define SERIAL_DEBUG_BPS  115200      //串口0 DEBUG波特率
 #define SERIAL_BPS  230400            // 串口0波特率
-#define GpsSerial 9600                // GPS串口波特率
+//#define Gps 9600                // GPS串口波特率
+#define RX_PIN 16  // 接收引脚
+#define TX_PIN 17  // 发送引脚
+HardwareSerial GpsSerial(2); // 使用UART2
+
 
 #define IOT_DATA_UPLOAD_DELAY 3000  // IOT数据上传周期(ms)
 #define LINK_STATE_CHECK_DELAY 10000  // 设备在线状态检查周期(ms)
@@ -91,15 +95,14 @@ const char *wifi_ssid = "FFF";
 const char *wifi_password = "87654321";
 
 /* MQTT相关配置信息 */
-const char *mqtt_broker_addr = "********"; // MQTT服务器地址
+const char *mqtt_broker_addr = ""; // MQTT服务器地址
 const uint16_t mqtt_broker_port = 1883; // MQTT服务器端口            
-const char *mqtt_username = "****"; // MQTT账号
-const char *mqtt_password = "****"; // MQTT密码
+const char *mqtt_username = ""; // MQTT账号
+const char *mqtt_password = ""; // MQTT密码
 const uint16_t mqtt_client_buff_size = 4096; // 客户端缓存大小（非必须）
 String mqtt_client_id = "esp32_client"; // 客户端ID
 const char *mqtt_willTopic = "esp32/state"; // MQTT连接遗嘱主题
-const char *mqtt_topic_pub = ""; // 需要发布到的主题
-const char *mqtt_topic_sub = ""; // 需要订阅的主题
+
 
 
 
@@ -155,8 +158,9 @@ void loop() {
 void Serial_init(){
     if(DEBUG_MODE) Serial.begin(SERIAL_DEBUG_BPS); // DEBUG模式
     else Serial.begin(SERIAL_BPS); //TX: RX:
-    Serial1.begin(GpsSerial); //TX: RX: GPS传感器占用onEncoderBChange
-    //Serial2.begin(SERIAL2_BPS); //TX: RX: RP2040占用
+      // 初始化与gps的通信串口
+    GpsSerial.begin(9600, SERIAL_8N1, RX_PIN, TX_PIN);
+
   }
 
   void IO_init(){
