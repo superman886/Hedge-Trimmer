@@ -3,11 +3,13 @@
 #include <TinyGPS++.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
-#include <VL53L0X.h>
+#include "Adafruit_VL53L0X.h"
+
 
 #define SERIAL_DEBUG_BPS  115200      //串口0 DEBUG波特率
 #define SERIAL_BPS  230400            // 串口0波特率
 #define GPSSERIAL 9600                // GPS串口波特率
+#define VISIONSERIAL 19200            // openmv串口波特率
 
 /**************** 各个任务的执行周期 *****************/  //待修改
 #define IOT_DATA_UPLOAD_DELAY 3000  // IOT数据上传周期(ms)
@@ -23,6 +25,18 @@
 /***********引脚配置*********************/
 // ADC 引脚配置
 #define adcPin  34     // 测电压引脚
+// 激光测距引脚
+#define VL53L0X_SCL_PIN 14     //激光测距传感器SCL引脚
+#define VL53L0X_SDA_PIN 13     //激光测距传感器SDA引脚
+// 定义两个传感器的XSHUT引脚和I2C地址
+#define LOX1_XSHUT_PIN 5   // 第一个传感器的XSHUT引脚
+#define LOX2_XSHUT_PIN 6   // 第二个传感器的XSHUT引脚
+#define LOX1_ADDRESS 0x30  // 第一个传感器的I2C地址
+#define LOX2_ADDRESS 0x31  // 第二个传感器的I2C地址
+// 电子罗盘引脚
+#define COMPASS_SCL_PIN 38     //电子罗盘传感器SCL引脚
+#define COMPASS_SDA_PIN 37     //电子罗盘传感器SDA引脚
+/*
 // TB6612引脚定义
 #define PWMA 4
 #define AIN1 6
@@ -35,12 +49,16 @@
 #define ENCODER_LEFT_B 11
 #define ENCODER_RIGHT_A 12
 #define ENCODER_RIGHT_B 13
-//激光测距引脚定义
-#define XSHUT1 17
-#define XSHUT2 18
-#define XSHUT3 19
-#define XSHUT4 20
-
+*/
+/**************电子罗盘配置****************/
+#define HMC5883_WriteAddress 0x1E          // HMC5883 的 I2C 地址（写地址）
+#define HMC5883_ModeRegisterAddress 0x02   // 模式寄存器地址，用于设置传感器的工作模式
+#define HMC5883_ContinuousModeCommand 0x00 // MD0,MD1为0时是连续测量模式
+#define HMC5883_DataOutputXMSBAddress 0x03 // 数据输出 X MSB寄存器起始地址，用于读取 X、Y、Z 轴的数据。
+#define xMax 65535                         //x轴最大偏移量
+#define xMin 0                             //x轴最小偏移量
+#define yMax 65535
+#define yMin 0
 
 //gps结构体类型
 typedef struct {
@@ -68,7 +86,7 @@ typedef struct {
 
 extern PIDController  pidLeft, pidRight;
 
-
+extern TwoWire I2C_2; // 声明外部定义的 I2C_2
 extern const bool DEBUG_MODE;
 /***********  传感器数据   系统数据  ****************/
 //电量采集参数
@@ -87,7 +105,9 @@ extern volatile int32_t rightEncoderCount ;
 extern char gpsRxBuffer[600];                   // GPS串口接收缓存
 extern unsigned int ii ;                        // 串口接收缓存
 
-
+extern const int Obstacle_distance;
+extern volatile bool obstacleDetected;  // 全局标志位，表示是否接近障碍物
+extern volatile bool treelawnDetected;  // 全局标志位，是否接近绿化带
 /***************  物联网  *******************/
 /* WiFi相关配置信息 */
 extern const char *wifi_ssid; //WiFi名
@@ -103,6 +123,10 @@ extern const char *mqtt_willTopic ; // MQTT连接遗嘱主题
 extern const char *mqtt_topic_pub ; // 需要发布到的主题
 extern const char *mqtt_topic_sub ; // 需要订阅的主题
 
+/* 电子罗盘相关配置信息 */
+extern const int xOffset;
+extern const int yOffset;  //用于校准传感器的原始数据
+//extern int outputData[6];
 
 /* 系统标志位 */ 
 extern bool enable_Iot_data_upload ;
@@ -113,11 +137,13 @@ extern long rssi ;
 extern TinyGPSPlus gps;// 定义GPS对象
 extern WiFiClient tcpClient;
 extern PubSubClient mqttClient;
-extern VL53L0X sensor1, sensor2, sensor3, sensor4;  //四个 VL53L0X 类型的对象
-
+//extern VL53L0X sensor1, sensor2, sensor3, sensor4;  //四个 VL53L0X 类型的对象
+extern Adafruit_VL53L0X lox1;
+extern Adafruit_VL53L0X lox2;
+extern VL53L0X_RangingMeasurementData_t measure1, measure2;
 //队列
-extern QueueHandle_t distanceQueue; //distanceQueue 存储的是一个包含 4 个传感器距离值的数组（uint16_t distances[4]）
-extern QueueHandle_t encoderQueue;  //encoderQueue 存储的是一个包含两个编码器计数值的数组（int32_t counts[2]）。（可以用互斥锁）
+//extern QueueHandle_t distanceQueue; //distanceQueue 存储的是一个包含 4 个传感器距离值的数组（uint16_t distances[4]）
+//extern QueueHandle_t encoderQueue;  //encoderQueue 存储的是一个包含两个编码器计数值的数组（int32_t counts[2]）。（可以用互斥锁）
 
 /* 互斥锁声明 */
 extern SemaphoreHandle_t voltageMutex ;// 保护 batteryPercentage

@@ -20,6 +20,12 @@ void iotServiceTask(void *pvParameters) {
 
 // 测距任务（激光测距）
 void distanceTask(void *pvParameters) {
+  for(;;) {
+    laser_ranging_sensor_read();// 写入激光测距更新数据
+    Serial.print("im fine");
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+  }
+  /*
   uint16_t distances[4];
   while (1) {
     distances[0] = sensor1.readRangeContinuousMillimeters();
@@ -30,8 +36,10 @@ void distanceTask(void *pvParameters) {
     xQueueOverwrite(distanceQueue, &distances);
     vTaskDelay(pdMS_TO_TICKS(50)); // 20Hz更新
   }
+  */
 }
 
+/*
 // 编码器读取任务
 void encoderTask(void *pvParameters) {
   int32_t counts[2];
@@ -42,7 +50,7 @@ void encoderTask(void *pvParameters) {
     vTaskDelay(pdMS_TO_TICKS(10)); // 100Hz更新
   }
 }
-
+*/
 //  电压传感器采集任务（电压、gps）
 void sensorTask(void *pvParameters) {
     const TickType_t xFrequency = pdMS_TO_TICKS(SENSOR_READ_DELAY);
@@ -64,7 +72,7 @@ void gpsTask(void *pvParameters) {
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 }
-
+/*
 // 电机控制任务（ai写的根据自己修改）
 void motorControlTask(void *pvParameters) {
   PIDController pidLeft, pidRight;
@@ -107,7 +115,7 @@ void motorControlTask(void *pvParameters) {
     vTaskDelay(pdMS_TO_TICKS(10));
   }
 }
-
+*/
 
 
 
@@ -166,3 +174,21 @@ void MQTT_event_app(){
             xSemaphoreGive(mqttMutex);
     }
 }
+
+
+// 发现绿化带
+void visionTask(void *pvParameters) {
+  for(;;) {
+    vision_sensor_read();// 视觉发现绿化带后更新数据
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+  }
+}
+
+/* 方位角检测*/
+void compassTask(void *pvParameters) {
+  for(;;) {
+    compass_sensor_read();// 电子罗盘更新数据
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+  }
+}
+
