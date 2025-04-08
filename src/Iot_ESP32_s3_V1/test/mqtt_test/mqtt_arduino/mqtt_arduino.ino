@@ -13,10 +13,10 @@ const char* wifi_ssid = "FFF";
 const char* wifi_password = "87654321";
 
 // MQTT 代理配置
-const char *mqtt_broker_addr = "47.122.154.80";             // MQTT服务器地址
+const char *mqtt_broker_addr = "0";             // MQTT服务器地址
 const uint16_t mqtt_broker_port = 1883;                     // MQTT服务器端口            
-const char *mqtt_username = "esp32";                        // MQTT账号
-const char *mqtt_password = "123456";                       // MQTT密码
+const char *mqtt_username = "";                        // MQTT账号
+const char *mqtt_password = "16";                       // MQTT密码
 const uint16_t mqtt_client_buff_size = 4096;                // 客户端缓存大小（非必须）
 String mqtt_client_id = "esp32_client";                     // 客户端ID
 const char *mqtt_willTopic = "esp32/state";                 // MQTT连接遗嘱主题
