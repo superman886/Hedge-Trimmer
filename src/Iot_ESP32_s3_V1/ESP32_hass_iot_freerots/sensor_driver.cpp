@@ -3,9 +3,10 @@
 
 #include "sensor_driver.h"
 #include "MQTT_driver.h" 
-
+#include "Wire.h"
 
 //初始化1.1
+
 
 GpsData Save_Data = {
     .GPS_Buffer = {0},
@@ -151,7 +152,7 @@ void setMotor(int pwmPin, int in1, int in2, int speed) {
   analogWrite(pwmPin, abs(speed));
 }
 
-
+/*
 // 编码器中断服务程序
 void IRAM_ATTR leftEncoderISR() {
   leftEncoderCount += digitalRead(ENCODER_LEFT_B) ? -1 : 1;
@@ -160,5 +161,147 @@ void IRAM_ATTR leftEncoderISR() {
 void IRAM_ATTR rightEncoderISR() {
   rightEncoderCount += digitalRead(ENCODER_RIGHT_B) ? -1 : 1;
 }
+
+*/
+/* 激光测距传感器读取 */
+void laser_ranging_sensor_read()
+{
+  /*
+  VL53L0X_RangingMeasurementData_t measure;
+  lox.rangingTest(&measure, false);
+  if (measure.RangeStatus != 4)
+  { // 判断测量结果状态
+    Serial.print("Distance (mm): ");
+    Serial.println(measure.RangeMilliMeter);
+    obstacleDetected = (measure.RangeMilliMeter <= Obstacle_distance);
+    Serial.print(obstacleDetected);
+    Serial.print("\n");
+  } 
+  else 
+    Serial.println("Measurement failed!");
+  */
+  // 测量并输出第一个传感器的距离
+  VL53L0X_RangingMeasurementData_t measure1;
+  lox1.rangingTest(&measure1, false);
+  if (measure1.RangeStatus != 4) {
+    Serial.print("Sensor1 Distance (mm): ");
+    Serial.print(measure1.RangeMilliMeter);
+  } 
+  else {
+    Serial.print("Sensor1 out of range");
+  }
+
+  // 测量并输出第二个传感器的距离
+  VL53L0X_RangingMeasurementData_t measure2;
+  lox2.rangingTest(&measure2, false);
+  if (measure2.RangeStatus != 4) {
+    Serial.print(" | Sensor2 Distance (mm): ");
+    Serial.println(measure2.RangeMilliMeter);
+  } else {
+    Serial.println(" | Sensor2 out of range");
+  }
+  vTaskDelay(100 / portTICK_PERIOD_MS);
+}
+
+
+/* 视觉传感器读取 */
+void vision_sensor_read()
+{
+  if(Serial2.available())                         //判断串口2是否有数据
+  {
+    String data = Serial2.readStringUntil('\n');  //如果有数据，就接收，以一个字符串的形式
+    //Serial.println(data);                       //把接收到的数据打印到串口监视器  
+    if(data == "treelawn") 
+    {
+      treelawnDetected = true;                  // 设置treelawn检测标志位
+      Serial.println(data);                       //把接收到的数据打印到串口监视器  
+      Serial.print("i found it!!");
+      vTaskDelay(50 / portTICK_PERIOD_MS);
+    }
+  } 
+  else
+  {
+    treelawnDetected = false;                     // 未发现绿化带，设置treelawn检测标志位
+    vTaskDelay(50 / portTICK_PERIOD_MS);
+  }
+  //Serial.println(treelawnDetected);  
+}
+
+/*电子罗盘读取方位*/
+void compass_sensor_read()
+//void compass_sensor_read(TwoWire &wire)
+{
+  int i, x, y, z; // 三轴数据
+  double angle;
+  int outputData[6];
+
+  I2C_2.beginTransmission(HMC5883_WriteAddress);
+  I2C_2.write(HMC5883_ModeRegisterAddress);
+  I2C_2.write(HMC5883_ContinuousModeCommand);    //设置 HMC5883L 的工作模式为连续测量模式，并等待 50ms 以确保模式切换完成。
+  I2C_2.endTransmission();
+  vTaskDelay(50 / portTICK_PERIOD_MS);
+
+
+  I2C_2.requestFrom(HMC5883_WriteAddress, 6);    // 请求从 HMC5883L 读取 6 字节数据（X、Y、Z 轴的高字节和低字节）。
+  vTaskDelay(50 / portTICK_PERIOD_MS);
+
+  if (I2C_2.available() >= 6)                    // 如果有 6 字节数据可读
+  { 
+    for (i = 0; i < 6; i++)
+      outputData[i] = I2C_2.read(); // 读取数据并存储到数组中
+  } 
+  else
+  {
+    Serial.println("Error: Not enough data available!");
+    return; // 跳过本次循环
+  }
+
+  // 解析数据，将读取的 6 字节数据解析为 X、Y、Z 轴的 16 位整数值。
+  // 每个轴的数据由两个字节组成（高字节和低字节），通过位操作组合成完整的数值。
+  x = outputData[0] << 8 | outputData[1]; // 组合 X 轴数据，高位向左移8位或上低位即可组合成一个真正的数据
+  z = outputData[2] << 8 | outputData[3]; // 组合 Z 轴数据
+  y = outputData[4] << 8 | outputData[5]; // 组合 Y 轴数据
+  
+  //检查是否出现无效数据（x 和 y 都为 0）。如果无效，则打印错误信息并跳过本次循环。
+  if (x == 0 && y == 0)
+  {
+    Serial.println("Error: Invalid magnetic data (x = 0, y = 0)");
+    return; // 跳过本次循环
+  }
+
+  //对 X 和 Y 轴数据应用偏移量，校准传感器的原始数据。
+  x -= xOffset;
+  y -= yOffset;
+
+  angle = atan2((double)y, (double)x) * (180 / 3.14159265); //使用 atan2(y, x) 计算方向角（弧度），然后将其转换为角度值（0~360 度）。
+  if (angle < 0) angle += 360.0; // 将角度调整为 0~360 度范围 
+  angle -= 135.0;// 手动补偿固定偏差（根据实际情况，可修改）
+  if (angle < 0) angle += 360.0; // 将角度调整为 0~360 度范围
+  // 打印角度值
+  Serial.print(angle, 2); //保留两位小数
+  Serial.println(" °");
+
+  // 判断方向
+  if (((angle >= 0.13) && (angle <= 0.31))||((angle >= 269.68) && (angle < 269.71))) 
+    Serial.println("北");
+  else if (((angle >= 0.00) && (angle < 0.13))||((angle >= 359.87) && (angle <= 360)))
+    Serial.println("东北");
+  else if (((angle >= 359.78) && (angle < 359.87))||((angle >= 90.17) && (angle <= 90.22)))
+    Serial.println("东");
+  else if ((angle >= 89.96) && (angle < 90.17)) 
+    Serial.println("东南");
+  else if (((angle >= 180.14) && (angle <= 180.20))||((angle >= 89.79) && (angle < 89.96))) 
+    Serial.println("南");
+  else if ((angle >= 179.74) && (angle < 180.14))
+    Serial.println("西南");
+  else if ((angle >= 270.01) && (angle < 270.28))
+    Serial.println("西");
+  else if ((angle >= 269.71) && (angle < 270.01))
+    Serial.println("西北");
+  else
+    Serial.println("新角度，请修改");
+  vTaskDelay(50 / portTICK_PERIOD_MS);
+}
+
 
 
