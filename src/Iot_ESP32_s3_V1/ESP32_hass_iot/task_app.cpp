@@ -36,14 +36,22 @@ void Iot_data_upload_app(){
     float gps_accuracy = 1.5; // 示例值，根据实际情况替换
     String payload = "home" ;
     // 构建 JSON 字符串
-   String sensor1_gps_string = "{ \"state\":"+ String(payload)  + 
-                                ",\"latitude\":" + String(Save_Data.latitude) + 
-                                ",\"longitude\":" + String(Save_Data.longitude) + 
-                                ",\"gps_accuracy\":" + String(gps_accuracy) + "}";
+    String sensor_gpsData = "{"
+  "\"state\":\"home\","         // 新增状态字段
+  "\"latitude\":" + String(atof(Save_Data.latitude) / 100.0 + 0.2036154, 7) + ","  // 保留7位小数精度
+  "\"longitude\":" + String(atof(Save_Data.longitude) / 100.0 + 0.0168450, 7) + "," 
+  "\"accuracy\":" + String(36.6, 1) +  // 修改字段名并指定1位小数
+"}";
         if (DEBUG_MODE) {
-      Serial.printf("[DEBUG] MQTT发送: %s\n", sensor1_gps_string.c_str());}
+      Serial.printf("[DEBUG] MQTT发送: %s\n", sensor_gpsData.c_str());}
+          // 调试输出
+      Serial.print("原始纬度: "); Serial.println(Save_Data.latitude);
+      Serial.print("原始经度: "); Serial.println(Save_Data.longitude);
+      Serial.print("转换后纬度: "); Serial.println(atof(Save_Data.latitude) / 100.0 + 0.2036154, 7);
+      Serial.print("转换后经度: "); Serial.println(atof(Save_Data.longitude) / 100.0 + 0.0168450, 7);
+      Serial.print("MQTT发送: "); Serial.println(sensor_gpsData);
     // 发布 MQTT 消息
-    mqttClient.publish("esp32/sensor/gps", sensor1_gps_string.c_str());
+    mqttClient.publish("esp32/state/attributes", sensor_gpsData.c_str());
     
     
 }
