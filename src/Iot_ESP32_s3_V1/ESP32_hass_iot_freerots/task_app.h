@@ -6,12 +6,13 @@
 
 
 void MQTT_event_app();
-// 删除原有任务函数声明，改为FreeRTOS任务函数
 void iotServiceTask(void *pvParameters);
-void sensorTask(void *pvParameters);
 void dataUploadTask(void *pvParameters);
-void distanceTask(void *pvParameters);
+void batteryTask(void *pvParameters);
 void gpsTask(void *pvParameters);
-void sensorTask(void *pvParameters);
-void encoderTask(void *pvParameters);
-void motorControlTask(void *pvParameters);
+void speedAndPIDTask(void *pvParameters);
+void distanceTask(void *pvParameters);
+void maxSpeedTestTask(void *pvParams);
+void compassTask(void *pvParameters);
+void visionTask(void *pvParameters);
+void laserWarningTask(void *pvParameters);

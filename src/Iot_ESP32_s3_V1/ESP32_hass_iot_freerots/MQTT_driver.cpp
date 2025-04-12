@@ -10,7 +10,7 @@ void wifi_setup(){
     if(DEBUG_MODE){Serial.printf("Connecting to %s\n", wifi_ssid);}
     WiFi.begin(wifi_ssid, wifi_password);
     while (WiFi.status() != WL_CONNECTED) {
-        delay(500);
+        vTaskDelay(pdMS_TO_TICKS(500));
         if(DEBUG_MODE){Serial.print(".");}
     }
     if(DEBUG_MODE){
