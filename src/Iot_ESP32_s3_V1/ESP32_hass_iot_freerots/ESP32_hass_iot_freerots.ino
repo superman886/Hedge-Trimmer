@@ -179,7 +179,7 @@ void setup() {
     xTaskCreatePinnedToCore(laserWarningTask, "LaserWarning", 2048, NULL, 4, NULL, CORE_1);
 
     // GPS处理任务（3s更新）
-    xTaskCreatePinnedToCore( gpsTask, "GPS_Task", 4096, NULL, 3, &gpsTaskHandle, CORE_1 );
+    //xTaskCreatePinnedToCore( gpsTask, "GPS_Task", 4096, NULL, 3, &gpsTaskHandle, CORE_1 );
 
     // 电压传感器任务（3s更新）
     xTaskCreatePinnedToCore( batteryTask, "Battery_Task", 4096, NULL, 3, &batteryTaskHandle, CORE_1 );
